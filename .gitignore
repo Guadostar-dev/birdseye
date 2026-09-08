@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.env
+.env.local
+*.log
+tsconfig.tsbuildinfo
+data/*.json
+data/workbooks/*
+!data/.gitkeep
+!data/workbooks/.gitkeep
