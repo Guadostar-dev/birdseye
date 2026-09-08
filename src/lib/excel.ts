@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import type { CellValue, Sheet, Workbook } from "./types";
+import { DEFAULT_COL_WIDTH, clampColWidth, sanitizeFill } from "./grid";
 
 const MAX_SHEET_NAME = 31;
 const MAX_ROWS = 5000;
@@ -15,7 +16,16 @@ function asCell(value: unknown): CellValue {
   return String(value);
 }
 
-function normalizeSheet(name: string, aoa: unknown[][]): Sheet {
+function columnWidthsFromExcel(colCount: number, cols: XLSX.ColInfo[] | undefined): number[] {
+  return Array.from({ length: colCount }, (_, index) => {
+    const col = cols?.[index];
+    if (col && typeof col.wpx === "number") return clampColWidth(col.wpx);
+    if (col && typeof col.wch === "number") return clampColWidth(col.wch * 8 + 5);
+    return DEFAULT_COL_WIDTH;
+  });
+}
+
+function normalizeSheet(name: string, aoa: unknown[][], cols?: XLSX.ColInfo[]): Sheet {
   const clipped = aoa.slice(0, MAX_ROWS).map((row) => row.slice(0, MAX_COLS));
   const colCount = Math.max(1, ...clipped.map((row) => row.length), 8);
   const rowCount = Math.max(clipped.length, 20);
@@ -28,7 +38,12 @@ function normalizeSheet(name: string, aoa: unknown[][]): Sheet {
     }
     rows.push(row);
   }
-  return { name: name.slice(0, MAX_SHEET_NAME) || "Sheet", rows };
+  return {
+    name: name.slice(0, MAX_SHEET_NAME) || "Sheet",
+    rows,
+    columnWidths: columnWidthsFromExcel(colCount, cols),
+    fills: {},
+  };
 }
 
 export function parseExcel(bytes: Uint8Array, projectId: string, fileName: string): Workbook {
@@ -41,7 +56,7 @@ export function parseExcel(bytes: Uint8Array, projectId: string, fileName: strin
       defval: "",
       raw: true,
     });
-    return normalizeSheet(name, aoa);
+    return normalizeSheet(name, aoa, sheet["!cols"]);
   });
   return {
     projectId,
@@ -57,6 +72,10 @@ export function writeExcel(workbook: Workbook): Uint8Array {
     const ws = XLSX.utils.aoa_to_sheet(
       sheet.rows.map((row) => row.map((cell) => (cell === "" ? undefined : cell))),
     );
+    const colCount = Math.max(1, ...sheet.rows.map((row) => row.length));
+    ws["!cols"] = Array.from({ length: colCount }, (_, index) => ({
+      wpx: clampColWidth(sheet.columnWidths?.[index] ?? DEFAULT_COL_WIDTH),
+    }));
     XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, MAX_SHEET_NAME) || "Sheet");
   }
   return new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }));
@@ -72,5 +91,20 @@ export function padSheet(sheet: Sheet, minRows = 20, minCols = 8): Sheet {
   while (rows.length < minRows) {
     rows.push(Array.from({ length: colCount }, () => ""));
   }
-  return { ...sheet, rows };
+
+  const columnWidths = Array.from({ length: colCount }, (_, index) =>
+    clampColWidth(typeof sheet.columnWidths?.[index] === "number" ? sheet.columnWidths[index] : DEFAULT_COL_WIDTH),
+  );
+
+  const fills: Record<string, string> = {};
+  for (const [key, value] of Object.entries(sheet.fills || {})) {
+    const hex = sanitizeFill(value);
+    if (!hex) continue;
+    const [row, col] = key.split(":").map(Number);
+    if (!Number.isInteger(row) || !Number.isInteger(col)) continue;
+    if (row < 0 || col < 0 || row >= rows.length || col >= colCount) continue;
+    fills[`${row}:${col}`] = hex;
+  }
+
+  return { name: sheet.name, rows, columnWidths, fills };
 }

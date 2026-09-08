@@ -37,6 +37,8 @@ export type CellValue = string | number | boolean | null;
 export type Sheet = {
   name: string;
   rows: CellValue[][];
+  columnWidths?: number[];
+  fills?: Record<string, string>;
 };
 
 export type Workbook = {

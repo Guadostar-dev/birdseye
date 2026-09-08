@@ -48,6 +48,27 @@ body {
   border-color: #d9e1ec;
 }
 
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  z-index: 30;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.col-resizer:hover,
+.sheet-resizing .col-resizer {
+  background: rgb(227 24 55 / 0.45);
+}
+
+.sheet-resizing,
+.sheet-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
 .status-planning {
   background: #eef3fb;
   color: #2b55a2;

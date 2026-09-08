@@ -231,6 +231,8 @@ export function emptyManTechMatrix(): Workbook {
           ],
           ...blank,
         ],
+        columnWidths: [220, 130, 130, 90, 150, 170, 130, 110, 180, 220],
+        fills: {},
       },
     ],
   };

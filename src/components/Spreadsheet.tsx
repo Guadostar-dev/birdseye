@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CellValue, Sheet, Workbook } from "@/lib/types";
-import { colLabel, parseClipboard } from "@/lib/grid";
+import {
+  DEFAULT_COL_WIDTH,
+  cellKey,
+  clampColWidth,
+  colLabel,
+  fillTextColor,
+  parseClipboard,
+  rangeBounds,
+  sanitizeFill,
+} from "@/lib/grid";
 
 type Props = {
   workbook: Workbook;
@@ -14,10 +23,25 @@ type Props = {
 
 type Coord = { row: number; col: number };
 
+const FILL_PRESETS = [
+  { label: "Clear", value: "" },
+  { label: "White", value: "#FFFFFF" },
+  { label: "Frost", value: "#F3F6FB" },
+  { label: "Gold", value: "#F6E3A1" },
+  { label: "Green", value: "#DCEFCE" },
+  { label: "Amber", value: "#FBF3E0" },
+  { label: "Red", value: "#F8D4D8" },
+  { label: "Blue", value: "#D7E4F8" },
+  { label: "Navy", value: "#1A2B4A" },
+  { label: "Birds Eye red", value: "#CC2131" },
+];
+
 function cloneSheets(sheets: Sheet[]): Sheet[] {
   return sheets.map((sheet) => ({
     name: sheet.name,
     rows: sheet.rows.map((row) => row.slice()),
+    columnWidths: sheet.columnWidths?.slice(),
+    fills: sheet.fills ? { ...sheet.fills } : {},
   }));
 }
 
@@ -30,7 +54,10 @@ function ensureSize(sheet: Sheet, rows: number, cols: number): Sheet {
   while (nextRows.length < rows) {
     nextRows.push(Array.from({ length: cols }, () => ""));
   }
-  return { ...sheet, rows: nextRows };
+  const columnWidths = Array.from({ length: cols }, (_, index) =>
+    clampColWidth(sheet.columnWidths?.[index] ?? DEFAULT_COL_WIDTH),
+  );
+  return { ...sheet, rows: nextRows, columnWidths, fills: { ...(sheet.fills || {}) } };
 }
 
 function display(value: CellValue): string {
@@ -41,6 +68,7 @@ function display(value: CellValue): string {
 export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, downloadUrl }: Props) {
   const [activeSheet, setActiveSheet] = useState(0);
   const [selected, setSelected] = useState<Coord>({ row: 0, col: 0 });
+  const [anchor, setAnchor] = useState<Coord>({ row: 0, col: 0 });
   const [editing, setEditing] = useState<Coord | null>(null);
   const [draft, setDraft] = useState("");
   const [renameIndex, setRenameIndex] = useState<number | null>(null);
@@ -50,10 +78,24 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [pointerSelecting, setPointerSelecting] = useState(false);
+  const [liveWidths, setLiveWidths] = useState<number[] | null>(null);
+  const resizeRef = useRef<{ col: number; startX: number; startWidth: number } | null>(null);
+  const liveWidthsRef = useRef<number[] | null>(null);
+  const columnWidthsRef = useRef<number[]>([]);
+  const updateSheetRef = useRef<(mutator: (current: Sheet) => Sheet) => void>(() => undefined);
 
   const sheet = workbook.sheets[activeSheet] ?? workbook.sheets[0];
   const rowCount = sheet?.rows.length ?? 0;
   const colCount = sheet?.rows[0]?.length ?? 0;
+  const fills = sheet?.fills || {};
+  const columnWidths = useMemo(
+    () =>
+      Array.from({ length: colCount }, (_, index) =>
+        clampColWidth(liveWidths?.[index] ?? sheet?.columnWidths?.[index] ?? DEFAULT_COL_WIDTH),
+      ),
+    [colCount, liveWidths, sheet?.columnWidths],
+  );
 
   useEffect(() => {
     if (activeSheet >= workbook.sheets.length) setActiveSheet(0);
@@ -76,6 +118,45 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
     [activeSheet, onWorkbookChange, workbook],
   );
 
+  columnWidthsRef.current = columnWidths;
+  updateSheetRef.current = updateSheet;
+
+  useEffect(() => {
+    function onMove(event: MouseEvent) {
+      const resize = resizeRef.current;
+      if (!resize) return;
+      const base = liveWidthsRef.current ?? columnWidthsRef.current;
+      const next = base.slice();
+      next[resize.col] = clampColWidth(resize.startWidth + (event.clientX - resize.startX));
+      liveWidthsRef.current = next;
+      setLiveWidths(next);
+    }
+    function onUp() {
+      setPointerSelecting(false);
+      const resize = resizeRef.current;
+      if (!resize) return;
+      const widths = liveWidthsRef.current;
+      resizeRef.current = null;
+      liveWidthsRef.current = null;
+      document.body.classList.remove("sheet-resizing");
+      setLiveWidths(null);
+      if (widths) {
+        updateSheetRef.current((item) => {
+          const sized = ensureSize(item, item.rows.length, Math.max(item.rows[0]?.length ?? 0, widths.length));
+          return { ...sized, columnWidths: widths };
+        });
+      }
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const bounds = rangeBounds(anchor, selected);
+
   const commitEdit = useCallback(() => {
     if (!editing) return;
     updateSheet((current) => {
@@ -92,6 +173,7 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
     (coord: Coord, seed?: string) => {
       const value = seed ?? display(sheet.rows[coord.row]?.[coord.col] ?? "");
       setSelected(coord);
+      setAnchor(coord);
       setEditing(coord);
       setDraft(value);
     },
@@ -99,11 +181,15 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
   );
 
   const moveSelection = useCallback(
-    (rowDelta: number, colDelta: number) => {
-      setSelected((prev) => ({
-        row: Math.max(0, Math.min(rowCount - 1, prev.row + rowDelta)),
-        col: Math.max(0, Math.min(colCount - 1, prev.col + colDelta)),
-      }));
+    (rowDelta: number, colDelta: number, extend = false) => {
+      setSelected((prev) => {
+        const next = {
+          row: Math.max(0, Math.min(rowCount - 1, prev.row + rowDelta)),
+          col: Math.max(0, Math.min(colCount - 1, prev.col + colDelta)),
+        };
+        if (!extend) setAnchor(next);
+        return next;
+      });
     },
     [colCount, rowCount],
   );
@@ -111,15 +197,32 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
   function addRow() {
     updateSheet((current) => {
       const cols = Math.max(1, ...current.rows.map((r) => r.length));
-      return { ...current, rows: [...current.rows, Array.from({ length: cols }, () => "")] };
+      const sized = ensureSize(current, current.rows.length + 1, cols);
+      sized.rows[sized.rows.length - 1] = Array.from({ length: cols }, () => "");
+      return sized;
     });
   }
 
   function addColumn() {
-    updateSheet((current) => ({
-      ...current,
-      rows: current.rows.map((row) => [...row, ""]),
-    }));
+    updateSheet((current) => {
+      const sized = ensureSize(current, current.rows.length, (current.rows[0]?.length ?? 0) + 1);
+      return sized;
+    });
+  }
+
+  function applyFill(color: string) {
+    const hex = sanitizeFill(color);
+    updateSheet((current) => {
+      const nextFills = { ...(current.fills || {}) };
+      for (let row = bounds.rowStart; row <= bounds.rowEnd; row++) {
+        for (let col = bounds.colStart; col <= bounds.colEnd; col++) {
+          const key = cellKey(row, col);
+          if (hex) nextFills[key] = hex;
+          else delete nextFills[key];
+        }
+      }
+      return { ...current, fills: nextFills };
+    });
   }
 
   function addSheet() {
@@ -128,6 +231,8 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
     sheets.push({
       name: `Sheet${sheets.length + 1}`,
       rows: Array.from({ length: 20 }, () => Array.from({ length: cols }, () => "")),
+      columnWidths: Array.from({ length: cols }, () => DEFAULT_COL_WIDTH),
+      fills: {},
     });
     onWorkbookChange({ ...workbook, sheets, updatedAt: new Date().toISOString() });
     setActiveSheet(sheets.length - 1);
@@ -206,16 +311,16 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      moveSelection(-1, 0);
+      moveSelection(-1, 0, event.shiftKey);
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
-      moveSelection(1, 0);
+      moveSelection(1, 0, event.shiftKey);
     } else if (event.key === "ArrowLeft") {
       event.preventDefault();
-      moveSelection(0, -1);
+      moveSelection(0, -1, event.shiftKey);
     } else if (event.key === "ArrowRight" || event.key === "Tab") {
       event.preventDefault();
-      moveSelection(0, event.shiftKey ? -1 : 1);
+      moveSelection(0, event.shiftKey ? -1 : 1, event.shiftKey || event.key === "Tab" ? event.shiftKey : false);
     } else if (event.key === "Enter") {
       event.preventDefault();
       startEdit(selected);
@@ -226,7 +331,11 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
       event.preventDefault();
       updateSheet((current) => {
         const rows = current.rows.map((row) => row.slice());
-        if (rows[selected.row]) rows[selected.row][selected.col] = "";
+        for (let row = bounds.rowStart; row <= bounds.rowEnd; row++) {
+          for (let col = bounds.colStart; col <= bounds.colEnd; col++) {
+            if (rows[row]) rows[row][col] = "";
+          }
+        }
         return { ...current, rows };
       });
     } else if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
@@ -234,10 +343,11 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
     }
   }
 
-  const formulaLabel = useMemo(
-    () => `${colLabel(selected.col)}${selected.row + 1}`,
-    [selected.col, selected.row],
-  );
+  const formulaLabel = useMemo(() => {
+    const start = `${colLabel(bounds.colStart)}${bounds.rowStart + 1}`;
+    const end = `${colLabel(bounds.colEnd)}${bounds.rowEnd + 1}`;
+    return start === end ? start : `${start}:${end}`;
+  }, [bounds]);
 
   const saveLabel =
     saveState === "saving"
@@ -247,6 +357,14 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
         : saveState === "error"
           ? "Save failed"
           : "Saved";
+
+  const tableWidth = 48 + columnWidths.reduce((sum, width) => sum + width, 0);
+  const selectedFill = fills[cellKey(selected.row, selected.col)] || "#FFFFFF";
+
+  function selectCell(coord: Coord, extend: boolean) {
+    setSelected(coord);
+    if (!extend) setAnchor(coord);
+  }
 
   return (
     <div
@@ -320,6 +438,32 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
           }}
         />
       </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-b border-be-ice bg-be-frost/70 px-3 py-2">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-be-navy/60">Fill</span>
+        {FILL_PRESETS.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            title={preset.label}
+            onClick={() => applyFill(preset.value)}
+            className={`h-6 w-6 rounded-md border ${
+              preset.value === "" ? "bg-[linear-gradient(135deg,#fff_46%,#cc2131_46%,#cc2131_54%,#fff_54%)]" : ""
+            } ${selectedFill.toUpperCase() === preset.value ? "ring-2 ring-be-navy" : "border-black/10"}`}
+            style={preset.value ? { background: preset.value } : undefined}
+          />
+        ))}
+        <label className="flex items-center gap-1 text-[11px] font-semibold text-be-navy/70" title="Custom fill colour">
+          Custom
+          <input
+            type="color"
+            value={selectedFill}
+            onChange={(event) => applyFill(event.target.value)}
+            className="h-6 w-8 cursor-pointer rounded border border-be-mist bg-white"
+          />
+        </label>
+        <span className="text-[11px] text-be-navy/50">Select cells, then pick a colour. Drag a column edge to resize.</span>
+      </div>
       {uploadError ? <p className="px-3 py-2 text-sm text-be-red">{uploadError}</p> : null}
       {dragging ? (
         <div className="px-3 py-2 text-center text-sm font-semibold text-be-blue">Drop your Excel file to replace this table</div>
@@ -332,13 +476,38 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
         onCopy={onCopy}
         className="relative min-h-0 flex-1 overflow-auto outline-none"
       >
-        <table className="sheet-grid min-w-full border-collapse text-sm">
+        <table className="sheet-grid border-collapse text-sm" style={{ width: tableWidth, tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: 48 }} />
+            {columnWidths.map((width, col) => (
+              <col key={col} style={{ width }} />
+            ))}
+          </colgroup>
           <thead className="sticky top-0 z-10">
             <tr>
-              <th className="sticky left-0 z-20 w-12 border bg-be-navy text-xs font-bold text-white">#</th>
+              <th className="sticky left-0 z-20 border bg-be-navy text-xs font-bold text-white">#</th>
               {Array.from({ length: colCount }, (_, col) => (
-                <th key={col} className="min-w-[7.5rem] border bg-be-navy px-2 py-2 text-xs font-bold tracking-wide text-white">
+                <th
+                  key={col}
+                  className="relative border bg-be-navy px-2 py-2 text-xs font-bold tracking-wide text-white"
+                  onClick={() => {
+                    setAnchor({ row: 0, col });
+                    setSelected({ row: Math.max(0, rowCount - 1), col });
+                  }}
+                >
                   {colLabel(col)}
+                  <span
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label={`Resize column ${colLabel(col)}`}
+                    className="col-resizer"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      resizeRef.current = { col, startX: event.clientX, startWidth: columnWidths[col] };
+                      document.body.classList.add("sheet-resizing");
+                    }}
+                  />
                 </th>
               ))}
             </tr>
@@ -346,21 +515,45 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
           <tbody>
             {sheet.rows.map((row, rowIndex) => (
               <tr key={rowIndex}>
-                <th className="sticky left-0 z-10 border bg-be-frost px-2 py-0 text-xs font-semibold text-be-navy/70">
+                <th
+                  className="sticky left-0 z-10 cursor-pointer border bg-be-frost px-2 py-0 text-xs font-semibold text-be-navy/70"
+                  onClick={() => {
+                    setAnchor({ row: rowIndex, col: 0 });
+                    setSelected({ row: rowIndex, col: Math.max(0, colCount - 1) });
+                  }}
+                >
                   {rowIndex + 1}
                 </th>
                 {row.map((cell, colIndex) => {
                   const isSelected = selected.row === rowIndex && selected.col === colIndex;
                   const isEditing = editing?.row === rowIndex && editing?.col === colIndex;
+                  const inRange =
+                    rowIndex >= bounds.rowStart &&
+                    rowIndex <= bounds.rowEnd &&
+                    colIndex >= bounds.colStart &&
+                    colIndex <= bounds.colEnd;
                   const isHeader = rowIndex === 0;
+                  const fill = fills[cellKey(rowIndex, colIndex)];
+                  const background = fill || (isHeader ? "rgba(216, 176, 89, 0.15)" : "#ffffff");
+                  const color = fill ? fillTextColor(fill) : undefined;
                   return (
                     <td
                       key={colIndex}
-                      onClick={() => setSelected({ row: rowIndex, col: colIndex })}
+                      onMouseDown={(event) => {
+                        if (event.button !== 0) return;
+                        selectCell({ row: rowIndex, col: colIndex }, event.shiftKey);
+                        setPointerSelecting(true);
+                      }}
+                      onMouseEnter={() => {
+                        if (pointerSelecting && !resizeRef.current) {
+                          setSelected({ row: rowIndex, col: colIndex });
+                        }
+                      }}
                       onDoubleClick={() => startEdit({ row: rowIndex, col: colIndex })}
-                      className={`h-9 border px-2 ${isHeader ? "bg-be-gold/15 font-semibold" : "bg-white"} ${
-                        isSelected ? "ring-2 ring-inset ring-be-red" : ""
+                      className={`h-9 overflow-hidden border px-2 ${isHeader && !fill ? "font-semibold" : ""} ${
+                        isSelected ? "ring-2 ring-inset ring-be-red" : inRange ? "ring-1 ring-inset ring-be-red/40" : ""
                       }`}
+                      style={{ background, color, width: columnWidths[colIndex] }}
                     >
                       {isEditing ? (
                         <input

@@ -69,8 +69,8 @@ export function MatrixWorkspace() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-be-red">Man-Tech Matrix</p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-be-navy">Live capability table</h1>
         <p className="mt-2 max-w-3xl text-sm text-be-navy/70">
-          Edit the matrix in the browser, paste from Excel, or upload a workbook. Changes autosave and can be downloaded
-          as .xlsx.
+          Edit the matrix in the browser, paste from Excel, or upload a workbook. Drag column edges to resize, colour
+          cells from the fill bar, and download as .xlsx. Changes autosave.
         </p>
       </div>
       <Spreadsheet

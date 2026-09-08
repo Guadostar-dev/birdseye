@@ -35,6 +35,8 @@ export async function PUT(request: NextRequest) {
       {
         name: (sheet.name || `Sheet${index + 1}`).slice(0, 31),
         rows: Array.isArray(sheet.rows) ? sheet.rows : [],
+        columnWidths: Array.isArray(sheet.columnWidths) ? sheet.columnWidths : [],
+        fills: sheet.fills && typeof sheet.fills === "object" ? sheet.fills : {},
       },
       1,
       1,
