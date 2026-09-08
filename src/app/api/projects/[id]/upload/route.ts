@@ -4,7 +4,6 @@ import { parseExcel } from "@/lib/excel";
 import { getProject, saveProject, saveWorkbook } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ id: string }> };
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -33,10 +32,10 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     );
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const bytes = new Uint8Array(await file.arrayBuffer());
   let workbook;
   try {
-    workbook = parseExcel(buffer, id, file.name);
+    workbook = parseExcel(bytes, id, file.name);
   } catch {
     return NextResponse.json({ error: "We couldn’t read that spreadsheet." }, { status: 400 });
   }

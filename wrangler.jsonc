@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Must match the Cloudflare Worker name (this repo deploys as "birdseye").
+  // WORKER_SELF_REFERENCE.service must be the same value, or deploy fails with
+  // code 10143 because OpenNext would otherwise bind to package.json's name.
+  "name": "birdseye",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "birdseye"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "PORTAL_KV"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "workers_dev": true,
+  "preview_urls": true
+}

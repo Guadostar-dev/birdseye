@@ -1,10 +1,16 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
 import type { Project, Workbook } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const PROJECTS_FILE = path.join(DATA_DIR, "projects.json");
-const WORKBOOKS_DIR = path.join(DATA_DIR, "workbooks");
+const PROJECTS_KEY = "projects";
+
+function workbookKey(projectId: string) {
+  return `workbook:${projectId}`;
+}
+
+type KvLike = {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string): Promise<void>;
+  delete?(key: string): Promise<void>;
+};
 
 let queue: Promise<unknown> = Promise.resolve();
 
@@ -17,15 +23,66 @@ function withLock<T>(fn: () => Promise<T>): Promise<T> {
   return next;
 }
 
-async function ensureDirs() {
-  await mkdir(DATA_DIR, { recursive: true });
-  await mkdir(WORKBOOKS_DIR, { recursive: true });
+async function cloudflareKv(): Promise<KvLike | null> {
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const { env } = await getCloudflareContext({ async: true });
+    const kv = env.PORTAL_KV;
+    if (!kv) return null;
+    return {
+      get: (key) => kv.get(key),
+      put: (key, value) => kv.put(key, value),
+      delete: (key) => kv.delete(key),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fileKv(): Promise<KvLike> {
+  const { mkdir, readFile, writeFile, unlink } = await import("node:fs/promises");
+  const path = await import("node:path");
+  const dataDir = path.join(process.cwd(), "data");
+  const workbooksDir = path.join(dataDir, "workbooks");
+  await mkdir(dataDir, { recursive: true });
+  await mkdir(workbooksDir, { recursive: true });
+
+  function fileFor(key: string) {
+    if (key === PROJECTS_KEY) return path.join(dataDir, "projects.json");
+    const id = key.replace(/^workbook:/, "");
+    return path.join(workbooksDir, `${id}.json`);
+  }
+
+  return {
+    async get(key) {
+      try {
+        return await readFile(fileFor(key), "utf8");
+      } catch {
+        return null;
+      }
+    },
+    async put(key, value) {
+      await writeFile(fileFor(key), value, "utf8");
+    },
+    async delete(key) {
+      try {
+        await unlink(fileFor(key));
+      } catch {
+        // already gone
+      }
+    },
+  };
+}
+
+async function backend(): Promise<KvLike> {
+  return (await cloudflareKv()) ?? (await fileKv());
 }
 
 async function readProjects(): Promise<Project[]> {
-  await ensureDirs();
+  const kv = await backend();
+  const raw = await kv.get(PROJECTS_KEY);
+  if (!raw) return [];
   try {
-    const raw = await readFile(PROJECTS_FILE, "utf8");
     const parsed = JSON.parse(raw) as Project[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -34,12 +91,8 @@ async function readProjects(): Promise<Project[]> {
 }
 
 async function writeProjects(projects: Project[]) {
-  await ensureDirs();
-  await writeFile(PROJECTS_FILE, JSON.stringify(projects, null, 2), "utf8");
-}
-
-function workbookPath(projectId: string) {
-  return path.join(WORKBOOKS_DIR, `${projectId}.json`);
+  const kv = await backend();
+  await kv.put(PROJECTS_KEY, JSON.stringify(projects, null, 2));
 }
 
 export async function listProjects(): Promise<Project[]> {
@@ -72,19 +125,17 @@ export async function deleteProject(id: string): Promise<boolean> {
     const next = projects.filter((p) => p.id !== id);
     if (next.length === projects.length) return false;
     await writeProjects(next);
-    try {
-      const { unlink } = await import("fs/promises");
-      await unlink(workbookPath(id));
-    } catch {
-      // no workbook stored
-    }
+    const kv = await backend();
+    await kv.delete?.(workbookKey(id));
     return true;
   });
 }
 
 export async function getWorkbook(projectId: string): Promise<Workbook | null> {
+  const kv = await backend();
+  const raw = await kv.get(workbookKey(projectId));
+  if (!raw) return null;
   try {
-    const raw = await readFile(workbookPath(projectId), "utf8");
     return JSON.parse(raw) as Workbook;
   } catch {
     return null;
@@ -93,8 +144,8 @@ export async function getWorkbook(projectId: string): Promise<Workbook | null> {
 
 export async function saveWorkbook(workbook: Workbook): Promise<Workbook> {
   return withLock(async () => {
-    await ensureDirs();
-    await writeFile(workbookPath(workbook.projectId), JSON.stringify(workbook), "utf8");
+    const kv = await backend();
+    await kv.put(workbookKey(workbook.projectId), JSON.stringify(workbook));
     const projects = await readProjects();
     const project = projects.find((p) => p.id === workbook.projectId);
     if (project) {
