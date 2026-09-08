@@ -19,7 +19,7 @@ export default function LoginPage() {
             Sign in to securely view Jonathon Satchell's Man-Tech development matrix and projects
           </p>
         </div>
-        <p className="relative text-sm text-white/60">For internal use only. Access is login-protected.</p>
+        <p className="relative pb-8 text-sm text-white/60">For internal use only. Access is login-protected.</p>
       </section>
       <section className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-md rounded-3xl border border-white bg-white p-8 shadow-[0_24px_80px_rgba(26,43,74,0.12)]">
