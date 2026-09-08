@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/api-auth";
-import { emptyWorkbook, listProjects, saveProject, saveWorkbook } from "@/lib/store";
-import type { Project, ProjectStatus } from "@/lib/types";
+import { listProjects, saveProject } from "@/lib/store";
+import { normalizeProject, type Project, type ProjectStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,22 +34,27 @@ export async function POST(request: NextRequest) {
     ? (body.status as ProjectStatus)
     : "planning";
   const now = new Date().toISOString();
-  const project: Project = {
+  const project = normalizeProject({
     id: crypto.randomUUID(),
     name,
-    description: (body.description || "").trim(),
+    summary: (body.summary || "").trim(),
+    writeup: (body.writeup || body.summary || "").trim(),
     status,
     owner: (body.owner || "").trim(),
     dueDate: body.dueDate || "",
     createdAt: now,
     updatedAt: now,
-    workbookName: "tracker.xlsx",
-    sheetCount: 1,
-    rowCount: 4,
-    colCount: 6,
-  };
+    slides: [
+      {
+        id: crypto.randomUUID(),
+        title: name,
+        body: (body.summary || "Add the story of this project here.").trim(),
+        notes: "",
+      },
+    ],
+    attachments: [],
+  });
 
   await saveProject(project);
-  await saveWorkbook(emptyWorkbook(project.id));
   return NextResponse.json({ project }, { status: 201 });
 }

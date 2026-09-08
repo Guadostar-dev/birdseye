@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/api-auth";
 import { parseExcel } from "@/lib/excel";
-import { getProject, saveWorkbook } from "@/lib/store";
+import { saveWorkbook } from "@/lib/store";
+import { MATRIX_ID } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-type Ctx = { params: Promise<{ id: string }> };
 const MAX_BYTES = 10 * 1024 * 1024;
 
-export async function POST(request: NextRequest, { params }: Ctx) {
+export async function POST(request: NextRequest) {
   const { error } = await requireApiSession(request);
   if (error) return error;
-  const { id } = await params;
-  const project = await getProject(id);
-  if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
 
   const form = await request.formData();
   const file = form.get("file");
@@ -35,11 +32,12 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   const bytes = new Uint8Array(await file.arrayBuffer());
   let workbook;
   try {
-    workbook = parseExcel(bytes, id, file.name);
+    workbook = parseExcel(bytes, MATRIX_ID, file.name);
   } catch {
     return NextResponse.json({ error: "We couldn’t read that spreadsheet." }, { status: 400 });
   }
 
+  workbook.projectId = MATRIX_ID;
   await saveWorkbook(workbook);
   return NextResponse.json({ workbook });
 }

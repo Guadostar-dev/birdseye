@@ -5,10 +5,11 @@ import type { CellValue, Sheet, Workbook } from "@/lib/types";
 import { colLabel, parseClipboard } from "@/lib/grid";
 
 type Props = {
-  projectId: string;
   workbook: Workbook;
   onWorkbookChange: (workbook: Workbook) => void;
   saveState: "saved" | "saving" | "unsaved" | "error";
+  uploadUrl: string;
+  downloadUrl: string;
 };
 
 type Coord = { row: number; col: number };
@@ -37,7 +38,7 @@ function display(value: CellValue): string {
   return String(value);
 }
 
-export function Spreadsheet({ projectId, workbook, onWorkbookChange, saveState }: Props) {
+export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, downloadUrl }: Props) {
   const [activeSheet, setActiveSheet] = useState(0);
   const [selected, setSelected] = useState<Coord>({ row: 0, col: 0 });
   const [editing, setEditing] = useState<Coord | null>(null);
@@ -145,7 +146,7 @@ export function Spreadsheet({ projectId, workbook, onWorkbookChange, saveState }
     try {
       const form = new FormData();
       form.append("file", file);
-      const response = await fetch(`/api/projects/${projectId}/upload`, { method: "POST", body: form });
+      const response = await fetch(uploadUrl, { method: "POST", body: form });
       const data = (await response.json()) as { error?: string; workbook?: Workbook };
       if (!response.ok || !data.workbook) {
         setUploadError(data.error || "Upload failed.");
@@ -294,7 +295,7 @@ export function Spreadsheet({ projectId, workbook, onWorkbookChange, saveState }
             {uploading ? "Uploading…" : "Upload Excel"}
           </button>
           <a
-            href={`/api/projects/${projectId}/download`}
+            href={downloadUrl}
             className="rounded-lg bg-be-red px-3 py-2 text-xs font-semibold text-white hover:bg-be-red-deep"
           >
             Download .xlsx
