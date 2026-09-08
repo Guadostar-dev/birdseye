@@ -1,10 +1,9 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 export function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -27,8 +26,8 @@ export function LoginForm() {
         setError(data.error || "Could not sign in.");
         return;
       }
-      router.push(params.get("next") || "/portal");
-      router.refresh();
+      const next = params.get("next") || "/portal";
+      window.location.assign(next.startsWith("/") ? next : "/portal");
     } catch {
       setError("Could not reach the portal. Try again.");
     } finally {

@@ -28,7 +28,7 @@ export default function LoginPage() {
           </div>
           <h2 className="text-2xl font-extrabold text-be-navy">Sign in</h2>
           <p className="mt-2 mb-8 text-sm text-be-navy/70">
-            This portal is private. Use your Birds Eye project credentials to continue.
+            Jonathon Satchells Man-Tech progression portal page. Use your Birds Eye project credentials to continue.
           </p>
           <Suspense>
             <LoginForm />
