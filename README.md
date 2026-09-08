@@ -50,10 +50,12 @@ Set a unique `SESSION_SECRET` and a strong `PORTAL_PASSWORD` before exposing the
 
 This app is built with OpenNext (`@opennextjs/cloudflare`). The Worker **must** be named `birdseye` so the `WORKER_SELF_REFERENCE` service binding points at the same script Cloudflare already created for this repo. A mismatch (for example binding `birdseye-portal` while deploying `birdseye`) fails with API code 10143.
 
-In Workers Builds:
+Workers Builds defaults to `npm run build` then `npx wrangler deploy`. On Workers CI, `npm run build` now generates `.open-next/worker.js` before Wrangler runs. You can keep those default commands.
 
-- **Build command:** `npx opennextjs-cloudflare build`
-- **Deploy command:** `npx opennextjs-cloudflare deploy`
+If you customise them, use either:
+
+- **Build command:** `npm run build` and **Deploy command:** `npx wrangler deploy`
+- **Build command:** *(empty)* and **Deploy command:** `npm run deploy`
 
 Or from your machine (with Wrangler logged in):
 
