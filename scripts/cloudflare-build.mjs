@@ -3,9 +3,9 @@
  * Cloudflare Workers Builds runs `npm run build` then `npx wrangler deploy`.
  * OpenNext's CLI also invokes `npm run build` to compile Next.js.
  *
- * On Workers CI this script produces `.open-next/worker.js` so the default
- * wrangler deploy command can find it. When OpenNext re-enters this script,
- * we only run `next build` to avoid recursion.
+ * This script always produces `.open-next/worker.js` so Wrangler deploys the
+ * portal instead of Cloudflare's default "Hello world" Worker. When OpenNext
+ * re-enters this script, we only run `next build` to avoid recursion.
  */
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -31,9 +31,5 @@ if (invokedByOpenNext) {
   run(bin("next"), ["build"]);
 }
 
-if (process.env.WORKERS_CI === "1") {
-  console.log("Workers CI: building OpenNext worker for wrangler deploy");
-  run(bin("opennextjs-cloudflare"), ["build"], { OPEN_NEXT_WORKER_BUILD: "1" });
-}
-
-run(bin("next"), ["build"]);
+console.log("Building OpenNext worker for Cloudflare");
+run(bin("opennextjs-cloudflare"), ["build"], { OPEN_NEXT_WORKER_BUILD: "1" });
