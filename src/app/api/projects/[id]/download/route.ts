@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const project = await getProject(id);
   if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
-  const workbook = (await getWorkbook(id)) ?? emptyWorkbook(id, project.workbookName || "tracker.xlsx");
+  const workbook = (await getWorkbook(id)) ?? emptyWorkbook(id, `${project.name}.xlsx`);
   const bytes = writeExcel(workbook);
   const safeName = (workbook.fileName || `${project.name}.xlsx`).replace(/[^\w.\- ]+/g, "_");
   const fileName = safeName.toLowerCase().endsWith(".xlsx") ? safeName : `${safeName}.xlsx`;

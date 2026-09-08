@@ -1,31 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/api-auth";
 import { padSheet } from "@/lib/excel";
-import { emptyWorkbook, getProject, getWorkbook, saveWorkbook } from "@/lib/store";
-import type { Sheet, Workbook } from "@/lib/types";
+import { emptyManTechMatrix, getWorkbook, saveWorkbook } from "@/lib/store";
+import { MATRIX_ID, type Sheet, type Workbook } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-type Ctx = { params: Promise<{ id: string }> };
-
-export async function GET(request: NextRequest, { params }: Ctx) {
+export async function GET(request: NextRequest) {
   const { error } = await requireApiSession(request);
   if (error) return error;
-  const { id } = await params;
-  const project = await getProject(id);
-  if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
-  const existing = await getWorkbook(id);
-  const workbook = existing ?? emptyWorkbook(id);
+  const existing = await getWorkbook(MATRIX_ID);
+  const workbook = existing ?? emptyManTechMatrix();
   if (!existing) await saveWorkbook(workbook);
   return NextResponse.json({ workbook });
 }
 
-export async function PUT(request: NextRequest, { params }: Ctx) {
+export async function PUT(request: NextRequest) {
   const { error } = await requireApiSession(request);
   if (error) return error;
-  const { id } = await params;
-  const project = await getProject(id);
-  if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
 
   let body: { fileName?: string; sheets?: Sheet[] };
   try {
@@ -52,8 +44,8 @@ export async function PUT(request: NextRequest, { params }: Ctx) {
   );
 
   const workbook: Workbook = {
-    projectId: id,
-    fileName: body.fileName || "tracker.xlsx",
+    projectId: MATRIX_ID,
+    fileName: body.fileName || "man-tech-matrix.xlsx",
     sheets,
     updatedAt: new Date().toISOString(),
   };

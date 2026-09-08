@@ -13,11 +13,10 @@ export default function LoginPage() {
             <LeafMark className="h-4 w-4" /> Private workspace
           </p>
           <h1 className="text-5xl font-extrabold leading-[1.05] tracking-tight">
-            Keep every project in one frozen-fresh view.
+            Jonathon Satchells Man-Tech progression portal page
           </h1>
           <p className="text-lg text-white/80">
-            Sign in to track work, upload Excel trackers, and edit tables live — styled with the Birds Eye red leaf,
-            navy, and harvest gold.
+            Sign in to securely view Jonathon Satchell's Man-Tech development matrix and projects
           </p>
         </div>
         <p className="relative text-sm text-white/60">For internal use only. Access is login-protected.</p>
@@ -29,7 +28,7 @@ export default function LoginPage() {
           </div>
           <h2 className="text-2xl font-extrabold text-be-navy">Sign in</h2>
           <p className="mt-2 mb-8 text-sm text-be-navy/70">
-            This portal is private. Use your Birds Eye project credentials to continue.
+            Jonathon Satchells Man-Tech progression portal page. Use your Birds Eye project credentials to continue.
           </p>
           <Suspense>
             <LoginForm />
