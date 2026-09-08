@@ -15,10 +15,13 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   const file = await getAttachment(id, fileId);
   if (!file) return NextResponse.json({ error: "File not found." }, { status: 404 });
   const bytes = Buffer.from(file.data, "base64");
+  const filename = file.fileName.replace(/[^\w.\- ]+/g, "_");
+  const inline = file.mimeType.startsWith("image/") || file.kind === "image";
   return new NextResponse(bytes, {
     headers: {
       "Content-Type": file.mimeType,
-      "Content-Disposition": `attachment; filename="${file.fileName.replace(/[^\w.\- ]+/g, "_")}"`,
+      "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${filename}"`,
+      "Cache-Control": "private, max-age=3600",
     },
   });
 }

@@ -67,3 +67,125 @@ body {
   background: #fde8eb;
   color: #cc2131;
 }
+
+.writeup-prose {
+  min-height: 22rem;
+  padding: 1rem 1.1rem 1.4rem;
+  outline: none;
+  color: var(--color-be-navy);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.writeup-prose p.is-empty:first-child::before {
+  color: rgb(26 43 74 / 0.4);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.writeup-prose h1,
+.writeup-prose h2,
+.writeup-prose h3 {
+  color: var(--color-be-navy);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin: 1.1rem 0 0.45rem;
+}
+
+.writeup-prose h1 {
+  font-size: 1.7rem;
+}
+
+.writeup-prose h2 {
+  font-size: 1.3rem;
+}
+
+.writeup-prose h3 {
+  font-size: 1.08rem;
+}
+
+.writeup-prose p {
+  margin: 0.45rem 0;
+}
+
+.writeup-prose ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+  margin: 0.5rem 0;
+}
+
+.writeup-prose ol {
+  list-style: decimal;
+  padding-left: 1.4rem;
+  margin: 0.5rem 0;
+}
+
+.writeup-prose li {
+  margin: 0.15rem 0;
+}
+
+.writeup-prose blockquote {
+  border-left: 4px solid var(--color-be-red);
+  margin: 0.8rem 0;
+  padding: 0.15rem 0 0.15rem 0.9rem;
+  color: rgb(26 43 74 / 0.78);
+  font-style: italic;
+}
+
+.writeup-prose a {
+  color: var(--color-be-blue);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.writeup-prose hr {
+  border: 0;
+  border-top: 1px solid var(--color-be-ice);
+  margin: 1.2rem 0;
+}
+
+.writeup-prose img,
+.writeup-prose .writeup-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.85rem 0;
+  border-radius: 12px;
+  border: 1px solid var(--color-be-ice);
+}
+
+.writeup-prose .tableWrapper {
+  overflow-x: auto;
+  margin: 0.8rem 0 1rem;
+}
+
+.writeup-prose th,
+.writeup-prose td {
+  border: 1px solid #d9e1ec;
+  padding: 0.45rem 0.65rem;
+  vertical-align: top;
+}
+
+.writeup-prose th {
+  background: var(--color-be-frost);
+  font-weight: 700;
+  text-align: left;
+}
+
+.writeup-prose .selectedCell {
+  background: rgb(204 33 49 / 0.08);
+}
+
+.writeup-prose .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--color-be-red);
+  pointer-events: none;
+}

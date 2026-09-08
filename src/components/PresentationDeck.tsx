@@ -23,6 +23,7 @@ export function PresentationDeck({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const slide = slides[active] ?? slides[0];
+  const files = attachments.filter((file) => file.kind !== "image" && !file.mimeType.startsWith("image/"));
 
   useEffect(() => {
     if (active >= slides.length) setActive(Math.max(0, slides.length - 1));
@@ -178,11 +179,11 @@ export function PresentationDeck({
           </label>
         </div>
         {uploadError ? <p className="mt-2 text-sm text-be-red">{uploadError}</p> : null}
-        {attachments.length === 0 ? (
+        {files.length === 0 ? (
           <p className="mt-3 text-sm text-be-navy/60">No files attached yet.</p>
         ) : (
           <ul className="mt-3 space-y-2">
-            {attachments.map((file) => (
+            {files.map((file) => (
               <li key={file.id} className="flex items-center justify-between rounded-xl bg-be-frost px-3 py-2 text-sm">
                 <a href={`/api/projects/${projectId}/attachments/${file.id}`} className="font-semibold text-be-blue hover:underline">
                   {file.fileName}

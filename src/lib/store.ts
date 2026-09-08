@@ -173,6 +173,7 @@ export async function saveAttachment(projectId: string, file: StoredAttachment):
       mimeType: file.mimeType,
       size: file.size,
       uploadedAt: file.uploadedAt,
+      kind: file.kind === "image" ? "image" : "file",
     };
     project.attachments = [...project.attachments.filter((item) => item.id !== file.id), meta];
     project.updatedAt = new Date().toISOString();

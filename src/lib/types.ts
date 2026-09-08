@@ -7,12 +7,15 @@ export type Slide = {
   notes: string;
 };
 
+export type AttachmentKind = "file" | "image";
+
 export type AttachmentMeta = {
   id: string;
   fileName: string;
   mimeType: string;
   size: number;
   uploadedAt: string;
+  kind?: AttachmentKind;
 };
 
 export type Project = {
@@ -74,6 +77,15 @@ export function normalizeProject(input: Partial<Project> & { description?: strin
     createdAt: input.createdAt || new Date().toISOString(),
     updatedAt: input.updatedAt || new Date().toISOString(),
     slides: Array.isArray(input.slides) ? input.slides : [],
-    attachments: Array.isArray(input.attachments) ? input.attachments : [],
+    attachments: Array.isArray(input.attachments)
+      ? input.attachments.map((file) => ({
+          id: file.id,
+          fileName: file.fileName,
+          mimeType: file.mimeType,
+          size: file.size,
+          uploadedAt: file.uploadedAt,
+          kind: file.kind === "image" ? "image" : "file",
+        }))
+      : [],
   };
 }

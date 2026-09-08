@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PresentationDeck } from "@/components/PresentationDeck";
+import { WriteupEditor } from "@/components/WriteupEditor";
 import type { AttachmentMeta, Project, ProjectStatus, Slide } from "@/lib/types";
 import { STATUS_LABELS } from "@/lib/types";
 
@@ -156,13 +157,17 @@ export function ProjectWriteup({ projectId }: { projectId: string }) {
       </div>
 
       <section className="rounded-2xl border border-be-ice bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-extrabold uppercase tracking-[0.16em] text-be-navy">Write-up</h2>
-        <textarea
-          value={project.writeup}
-          onChange={(e) => update({ writeup: e.target.value })}
-          rows={12}
-          placeholder="Context, problem, approach, results, and what happens next…"
-          className="mt-3 w-full rounded-xl border border-be-mist px-4 py-3 text-sm leading-6 outline-none focus:border-be-red focus:ring-4 focus:ring-be-red/15"
+        <div>
+          <h2 className="text-sm font-extrabold uppercase tracking-[0.16em] text-be-navy">Write-up</h2>
+          <p className="mt-1 text-sm text-be-navy/70">
+            Format headings, emphasis, lists, tables, and images so this reads like a proper project brief.
+          </p>
+        </div>
+        <WriteupEditor
+          key={project.id}
+          projectId={project.id}
+          initialHtml={project.writeup}
+          onChange={(writeup) => update({ writeup })}
         />
       </section>
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Project, ProjectStatus } from "@/lib/types";
 import { STATUS_LABELS } from "@/lib/types";
+import { writeupPlainText } from "@/lib/writeup";
 
 const STATUSES: ProjectStatus[] = ["planning", "active", "on-hold", "complete"];
 
@@ -42,7 +43,7 @@ export function PortalDashboard() {
 
   const visible = useMemo(() => {
     return projects.filter((project) => {
-      const haystack = `${project.name} ${project.summary} ${project.writeup} ${project.owner}`.toLowerCase();
+      const haystack = `${project.name} ${project.summary} ${writeupPlainText(project.writeup)} ${project.owner}`.toLowerCase();
       return haystack.includes(query.toLowerCase()) && (!statusFilter || project.status === statusFilter);
     });
   }, [projects, query, statusFilter]);
