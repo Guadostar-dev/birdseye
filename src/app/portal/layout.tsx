@@ -6,9 +6,9 @@ export default async function PortalLayout({ children }: { children: React.React
   const session = await getSession();
   if (!session) redirect("/login");
   return (
-    <div className="min-h-screen">
+    <div className="grid min-h-dvh grid-rows-[auto_minmax(0,1fr)]">
       <PortalHeader username={session.username} />
-      {children}
+      <div className="min-h-0 overflow-auto">{children}</div>
     </div>
   );
 }

@@ -368,7 +368,7 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
 
   return (
     <div
-      className="flex min-h-[32rem] flex-col overflow-hidden rounded-2xl border border-be-ice bg-white shadow-sm"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-be-ice bg-white shadow-sm"
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);
@@ -381,7 +381,7 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
         if (file) void uploadFile(file);
       }}
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-be-ice px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-be-ice px-3 py-2">
         <div className="flex min-w-[12rem] flex-1 items-center gap-2 rounded-lg border border-be-ice bg-be-frost px-3 py-2">
           <span className="text-xs font-bold text-be-blue">{formulaLabel}</span>
           <input
@@ -439,7 +439,7 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-be-ice bg-be-frost/70 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-be-ice bg-be-frost/70 px-3 py-2">
         <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-be-navy/60">Fill</span>
         {FILL_PRESETS.map((preset) => (
           <button
@@ -464,9 +464,9 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
         </label>
         <span className="text-[11px] text-be-navy/50">Select cells, then pick a colour. Drag a column edge to resize.</span>
       </div>
-      {uploadError ? <p className="px-3 py-2 text-sm text-be-red">{uploadError}</p> : null}
+      {uploadError ? <p className="shrink-0 px-3 py-2 text-sm text-be-red">{uploadError}</p> : null}
       {dragging ? (
-        <div className="px-3 py-2 text-center text-sm font-semibold text-be-blue">Drop your Excel file to replace this table</div>
+        <div className="shrink-0 px-3 py-2 text-center text-sm font-semibold text-be-blue">Drop your Excel file to replace this table</div>
       ) : null}
 
       <div
@@ -474,9 +474,9 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
         onKeyDown={onGridKeyDown}
         onPaste={onPaste}
         onCopy={onCopy}
-        className="relative min-h-0 flex-1 overflow-auto outline-none"
+        className="relative min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain outline-none"
       >
-        <table className="sheet-grid border-collapse text-sm" style={{ width: tableWidth, tableLayout: "fixed" }}>
+        <table className="sheet-grid w-max shrink-0 border-collapse text-sm" style={{ width: tableWidth, tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: 48 }} />
             {columnWidths.map((width, col) => (
@@ -575,7 +575,7 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
         </table>
       </div>
 
-      <div className="flex items-center gap-1 overflow-x-auto border-t border-be-ice bg-be-frost px-2 py-1.5">
+      <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-t border-be-ice bg-be-frost px-2 py-1.5">
         {workbook.sheets.map((item, index) => (
           <div key={`${item.name}-${index}`} className="flex items-center">
             {renameIndex === index ? (
