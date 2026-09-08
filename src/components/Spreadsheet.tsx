@@ -368,7 +368,7 @@ export function Spreadsheet({ workbook, onWorkbookChange, saveState, uploadUrl, 
 
   return (
     <div
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-be-ice bg-white shadow-sm"
+      className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-be-ice bg-white shadow-sm"
       onDragOver={(e) => {
         e.preventDefault();
         setDragging(true);

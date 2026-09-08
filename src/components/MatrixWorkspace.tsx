@@ -64,8 +64,8 @@ export function MatrixWorkspace() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 px-4 pb-12 pt-4 sm:px-6">
-      <div className="shrink-0">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden px-4 pb-12 pt-4 sm:px-6">
+      <div className="shrink-0 pb-3">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-be-red">Man-Tech Matrix</p>
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-be-navy sm:text-3xl">Live capability table</h1>
         <p className="mt-1 max-w-3xl text-sm text-be-navy/70">
