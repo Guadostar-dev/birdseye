@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-be-red: #cc2131;
+  --color-be-red-deep: #9e1824;
+  --color-be-leaf: #e31837;
+  --color-be-navy: #1a2b4a;
+  --color-be-blue: #2b55a2;
+  --color-be-gold: #d8b059;
+  --color-be-gold-soft: #efc374;
+  --color-be-frost: #f3f6fb;
+  --color-be-ice: #e6edf6;
+  --color-be-pea: #5c9e3c;
+  --color-be-mist: #d0d1d3;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-be-frost);
+  color: var(--color-be-navy);
+}
+
+.leaf-wash {
+  background:
+    radial-gradient(1200px 500px at -10% -20%, rgba(227, 24, 55, 0.35), transparent 55%),
+    radial-gradient(900px 420px at 110% 10%, rgba(43, 85, 162, 0.35), transparent 50%),
+    linear-gradient(160deg, #9e1824 0%, #cc2131 42%, #1a2b4a 100%);
+}
+
+.frost-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.sheet-grid {
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-grid td,
+.sheet-grid th {
+  border-color: #d9e1ec;
+}
+
+.status-planning {
+  background: #eef3fb;
+  color: #2b55a2;
+}
+
+.status-active {
+  background: #eaf6e4;
+  color: #3d7a24;
+}
+
+.status-on-hold {
+  background: #fbf3e0;
+  color: #8a6a1f;
+}
+
+.status-complete {
+  background: #fde8eb;
+  color: #cc2131;
+}
