@@ -4,7 +4,6 @@ import { deleteProject, getProject, saveProject } from "@/lib/store";
 import type { ProjectStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 const STATUSES: ProjectStatus[] = ["planning", "active", "on-hold", "complete"];
 

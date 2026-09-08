@@ -4,7 +4,6 @@ import { emptyWorkbook, listProjects, saveProject, saveWorkbook } from "@/lib/st
 import type { Project, ProjectStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 const STATUSES: ProjectStatus[] = ["planning", "active", "on-hold", "complete"];
 

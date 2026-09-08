@@ -4,7 +4,6 @@ import { writeExcel } from "@/lib/excel";
 import { emptyWorkbook, getProject, getWorkbook } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -15,10 +14,10 @@ export async function GET(request: NextRequest, { params }: Ctx) {
   const project = await getProject(id);
   if (!project) return NextResponse.json({ error: "Project not found." }, { status: 404 });
   const workbook = (await getWorkbook(id)) ?? emptyWorkbook(id, project.workbookName || "tracker.xlsx");
-  const buffer = writeExcel(workbook);
+  const bytes = writeExcel(workbook);
   const safeName = (workbook.fileName || `${project.name}.xlsx`).replace(/[^\w.\- ]+/g, "_");
   const fileName = safeName.toLowerCase().endsWith(".xlsx") ? safeName : `${safeName}.xlsx`;
-  return new NextResponse(new Uint8Array(buffer), {
+  return new NextResponse(Buffer.from(bytes), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="${fileName}"`,

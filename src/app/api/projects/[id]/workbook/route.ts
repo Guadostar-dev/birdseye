@@ -5,7 +5,6 @@ import { emptyWorkbook, getProject, getWorkbook, saveWorkbook } from "@/lib/stor
 import type { Sheet, Workbook } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ id: string }> };
 

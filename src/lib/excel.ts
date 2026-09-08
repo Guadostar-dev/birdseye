@@ -31,8 +31,8 @@ function normalizeSheet(name: string, aoa: unknown[][]): Sheet {
   return { name: name.slice(0, MAX_SHEET_NAME) || "Sheet", rows };
 }
 
-export function parseExcel(buffer: Buffer, projectId: string, fileName: string): Workbook {
-  const wb = XLSX.read(buffer, { type: "buffer", cellDates: true });
+export function parseExcel(bytes: Uint8Array, projectId: string, fileName: string): Workbook {
+  const wb = XLSX.read(bytes, { type: "array", cellDates: true });
   const names = wb.SheetNames.length ? wb.SheetNames : ["Sheet1"];
   const sheets = names.map((name) => {
     const sheet = wb.Sheets[name];
@@ -51,7 +51,7 @@ export function parseExcel(buffer: Buffer, projectId: string, fileName: string):
   };
 }
 
-export function writeExcel(workbook: Workbook): Buffer {
+export function writeExcel(workbook: Workbook): Uint8Array {
   const wb = XLSX.utils.book_new();
   for (const sheet of workbook.sheets) {
     const ws = XLSX.utils.aoa_to_sheet(
@@ -59,7 +59,7 @@ export function writeExcel(workbook: Workbook): Buffer {
     );
     XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, MAX_SHEET_NAME) || "Sheet");
   }
-  return Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
+  return new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx" }));
 }
 
 export function padSheet(sheet: Sheet, minRows = 20, minCols = 8): Sheet {
