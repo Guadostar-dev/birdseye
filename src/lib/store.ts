@@ -1,9 +1,14 @@
-import type { Project, Workbook } from "./types";
+import type { AttachmentMeta, Project, Workbook } from "./types";
+import { MATRIX_ID, normalizeProject } from "./types";
 
 const PROJECTS_KEY = "projects";
 
-function workbookKey(projectId: string) {
-  return `workbook:${projectId}`;
+function workbookKey(id: string) {
+  return `workbook:${id}`;
+}
+
+function attachmentKey(projectId: string, fileId: string) {
+  return `attachment:${projectId}:${fileId}`;
 }
 
 type KvLike = {
@@ -11,6 +16,8 @@ type KvLike = {
   put(key: string, value: string): Promise<void>;
   delete?(key: string): Promise<void>;
 };
+
+export type StoredAttachment = AttachmentMeta & { data: string };
 
 let queue: Promise<unknown> = Promise.resolve();
 
@@ -43,14 +50,11 @@ async function fileKv(): Promise<KvLike> {
   const { mkdir, readFile, writeFile, unlink } = await import("node:fs/promises");
   const path = await import("node:path");
   const dataDir = path.join(process.cwd(), "data");
-  const workbooksDir = path.join(dataDir, "workbooks");
   await mkdir(dataDir, { recursive: true });
-  await mkdir(workbooksDir, { recursive: true });
 
   function fileFor(key: string) {
     if (key === PROJECTS_KEY) return path.join(dataDir, "projects.json");
-    const id = key.replace(/^workbook:/, "");
-    return path.join(workbooksDir, `${id}.json`);
+    return `${path.join(dataDir, ...key.split(":"))}.json`;
   }
 
   return {
@@ -62,7 +66,9 @@ async function fileKv(): Promise<KvLike> {
       }
     },
     async put(key, value) {
-      await writeFile(fileFor(key), value, "utf8");
+      const file = fileFor(key);
+      await mkdir(path.dirname(file), { recursive: true });
+      await writeFile(file, value, "utf8");
     },
     async delete(key) {
       try {
@@ -83,8 +89,8 @@ async function readProjects(): Promise<Project[]> {
   const raw = await kv.get(PROJECTS_KEY);
   if (!raw) return [];
   try {
-    const parsed = JSON.parse(raw) as Project[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(raw) as Array<Partial<Project> & { description?: string }>;
+    return Array.isArray(parsed) ? parsed.map(normalizeProject) : [];
   } catch {
     return [];
   }
@@ -107,33 +113,37 @@ export async function getProject(id: string): Promise<Project | null> {
 
 export async function saveProject(project: Project): Promise<Project> {
   return withLock(async () => {
+    const normalized = normalizeProject(project);
     const projects = await readProjects();
-    const index = projects.findIndex((p) => p.id === project.id);
+    const index = projects.findIndex((p) => p.id === normalized.id);
     if (index >= 0) {
-      projects[index] = project;
+      projects[index] = normalized;
     } else {
-      projects.push(project);
+      projects.push(normalized);
     }
     await writeProjects(projects);
-    return project;
+    return normalized;
   });
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
   return withLock(async () => {
     const projects = await readProjects();
-    const next = projects.filter((p) => p.id !== id);
-    if (next.length === projects.length) return false;
-    await writeProjects(next);
+    const project = projects.find((p) => p.id === id);
+    if (!project) return false;
+    await writeProjects(projects.filter((p) => p.id !== id));
     const kv = await backend();
     await kv.delete?.(workbookKey(id));
+    for (const file of project.attachments) {
+      await kv.delete?.(attachmentKey(id, file.id));
+    }
     return true;
   });
 }
 
-export async function getWorkbook(projectId: string): Promise<Workbook | null> {
+export async function getWorkbook(id: string): Promise<Workbook | null> {
   const kv = await backend();
-  const raw = await kv.get(workbookKey(projectId));
+  const raw = await kv.get(workbookKey(id));
   if (!raw) return null;
   try {
     return JSON.parse(raw) as Workbook;
@@ -146,46 +156,85 @@ export async function saveWorkbook(workbook: Workbook): Promise<Workbook> {
   return withLock(async () => {
     const kv = await backend();
     await kv.put(workbookKey(workbook.projectId), JSON.stringify(workbook));
-    const projects = await readProjects();
-    const project = projects.find((p) => p.id === workbook.projectId);
-    if (project) {
-      const first = workbook.sheets[0];
-      project.workbookName = workbook.fileName;
-      project.sheetCount = workbook.sheets.length;
-      project.rowCount = first?.rows.length ?? 0;
-      project.colCount = Math.max(0, ...(first?.rows.map((r) => r.length) ?? [0]));
-      project.updatedAt = workbook.updatedAt;
-      await writeProjects(projects);
-    }
     return workbook;
   });
 }
 
-export function emptyWorkbook(projectId: string, fileName = "tracker.xlsx"): Workbook {
+export async function saveAttachment(projectId: string, file: StoredAttachment): Promise<AttachmentMeta> {
+  return withLock(async () => {
+    const projects = await readProjects();
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) throw new Error("Project not found.");
+    const kv = await backend();
+    await kv.put(attachmentKey(projectId, file.id), JSON.stringify(file));
+    const meta: AttachmentMeta = {
+      id: file.id,
+      fileName: file.fileName,
+      mimeType: file.mimeType,
+      size: file.size,
+      uploadedAt: file.uploadedAt,
+    };
+    project.attachments = [...project.attachments.filter((item) => item.id !== file.id), meta];
+    project.updatedAt = new Date().toISOString();
+    await writeProjects(projects);
+    return meta;
+  });
+}
+
+export async function getAttachment(projectId: string, fileId: string): Promise<StoredAttachment | null> {
+  const kv = await backend();
+  const raw = await kv.get(attachmentKey(projectId, fileId));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as StoredAttachment;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteAttachment(projectId: string, fileId: string): Promise<boolean> {
+  return withLock(async () => {
+    const projects = await readProjects();
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return false;
+    project.attachments = project.attachments.filter((item) => item.id !== fileId);
+    project.updatedAt = new Date().toISOString();
+    await writeProjects(projects);
+    const kv = await backend();
+    await kv.delete?.(attachmentKey(projectId, fileId));
+    return true;
+  });
+}
+
+export function emptyManTechMatrix(): Workbook {
+  const blank = Array.from({ length: 12 }, () => ["", "", "", "", "", "", "Not started", "", "", ""]);
   return {
-    projectId,
-    fileName,
+    projectId: MATRIX_ID,
+    fileName: "man-tech-matrix.xlsx",
     updatedAt: new Date().toISOString(),
     sheets: [
       {
-        name: "Tracker",
+        name: "Man-Tech Matrix",
         rows: [
-          ["Task", "Owner", "Status", "Due date", "Priority", "Notes"],
-          ["Set project goals", "", "Not started", "", "High", ""],
-          ["Gather requirements", "", "Not started", "", "Medium", ""],
-          ["Kick-off meeting", "", "Not started", "", "Medium", ""],
+          [
+            "Capability / process",
+            "Current level",
+            "Target level",
+            "Gap",
+            "Owner",
+            "Equipment / method",
+            "Status",
+            "Priority",
+            "Next action",
+            "Notes",
+          ],
+          ...blank,
         ],
       },
     ],
   };
 }
 
-export function summarizeWorkbook(workbook: Workbook) {
-  const first = workbook.sheets[0];
-  return {
-    workbookName: workbook.fileName,
-    sheetCount: workbook.sheets.length,
-    rowCount: first?.rows.length ?? 0,
-    colCount: Math.max(0, ...(first?.rows.map((r) => r.length) ?? [0])),
-  };
+export function emptyWorkbook(projectId: string, fileName = "tracker.xlsx"): Workbook {
+  return { ...emptyManTechMatrix(), projectId, fileName };
 }

@@ -1,6 +1,6 @@
-import { ProjectWorkspace } from "@/components/ProjectWorkspace";
+import { ProjectWriteup } from "@/components/ProjectWriteup";
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <ProjectWorkspace projectId={id} />;
+  return <ProjectWriteup projectId={id} />;
 }

@@ -1,15 +1,15 @@
-# Birds Eye Project Portal
+# Birds Eye Man-Tech Portal
 
-Private, login-protected workspace for tracking projects and editing Excel tables in the browser. The interface uses Birds Eye Foods brand colours: signature red `#CC2131`, leaf red `#E31837`, navy `#1A2B4A`, pack blue `#2B55A2`, and harvest gold `#D8B059`.
+Private, login-protected workspace for project write-ups, presentations, and a live Man-Tech Matrix. The interface uses Birds Eye Foods brand colours: signature red `#CC2131`, leaf red `#E31837`, navy `#1A2B4A`, pack blue `#2B55A2`, and harvest gold `#D8B059`.
 
 ## Features
 
-- Sign-in wall before any project data is reachable
-- Create, search, update, and delete projects
-- Starter tracker sheet on every new project
-- Upload `.xlsx`, `.xls`, or `.csv` (drag and drop or file picker)
-- Live cell editing with keyboard navigation, paste from Excel, sheet tabs, and autosave
-- Download the current table back as `.xlsx`
+- Sign-in wall before any data is reachable
+- Two tabs: **Projects** and **Man-Tech Matrix**
+- Project write-ups with status, owner, and long-form notes
+- In-portal presentation slides plus Present mode
+- Attach PowerPoint / PDF files to a project
+- Live-editable Man-Tech Matrix (upload Excel, paste, autosave, download .xlsx)
 
 ## Run locally
 

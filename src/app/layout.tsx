@@ -9,8 +9,8 @@ const sans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Birds Eye Project Portal",
-  description: "Private project tracker with live Excel editing.",
+  title: "Birds Eye Man-Tech Portal",
+  description: "Private Man-Tech project write-ups and live matrix.",
   icons: { icon: "/favicon.svg" },
   robots: { index: false, follow: false },
 };

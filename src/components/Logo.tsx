@@ -38,7 +38,7 @@ export function Logo({ className = "", markClassName, wordmark = true, inverted 
             Birds Eye
           </span>
           <span className={`block text-xs font-semibold uppercase tracking-[0.18em] ${inverted ? "text-be-gold-soft" : "text-be-blue"}`}>
-            Project Portal
+            Man-Tech Portal
           </span>
         </span>
       ) : null}

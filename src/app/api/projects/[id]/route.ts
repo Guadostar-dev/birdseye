@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/api-auth";
 import { deleteProject, getProject, saveProject } from "@/lib/store";
-import type { ProjectStatus } from "@/lib/types";
+import { normalizeProject, type ProjectStatus, type Slide } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -37,15 +37,24 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
     if (!name) return NextResponse.json({ error: "Give the project a name." }, { status: 400 });
     project.name = name;
   }
-  if (typeof body.description === "string") project.description = body.description.trim();
+  if (typeof body.summary === "string") project.summary = body.summary.trim();
+  if (typeof body.writeup === "string") project.writeup = body.writeup;
   if (typeof body.owner === "string") project.owner = body.owner.trim();
   if (typeof body.dueDate === "string") project.dueDate = body.dueDate;
   if (typeof body.status === "string" && STATUSES.includes(body.status as ProjectStatus)) {
     project.status = body.status as ProjectStatus;
   }
+  if (Array.isArray(body.slides)) {
+    project.slides = (body.slides as Slide[]).map((slide) => ({
+      id: slide.id || crypto.randomUUID(),
+      title: String(slide.title || "Untitled slide"),
+      body: String(slide.body || ""),
+      notes: String(slide.notes || ""),
+    }));
+  }
   project.updatedAt = new Date().toISOString();
-  await saveProject(project);
-  return NextResponse.json({ project });
+  const saved = await saveProject(normalizeProject(project));
+  return NextResponse.json({ project: saved });
 }
 
 export async function DELETE(request: NextRequest, { params }: Ctx) {
